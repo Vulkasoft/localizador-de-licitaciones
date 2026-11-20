@@ -129,8 +129,8 @@ say "4/4 Arrancando la app"
 if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
   ufw allow 22/tcp >/dev/null; ufw allow 80/tcp >/dev/null; ufw allow 443/tcp >/dev/null
 fi
-DOMAIN_NOW="$(grep -E '^DOMAIN=' .env | cut -d= -f2-)"
-APP_PORT_NOW="$(grep -E '^APP_PORT=' .env | cut -d= -f2-)"; APP_PORT_NOW="${APP_PORT_NOW:-3000}"
+DOMAIN_NOW="$(grep -E '^DOMAIN=' .env | cut -d= -f2- || true)"
+APP_PORT_NOW="$(grep -E '^APP_PORT=' .env | cut -d= -f2- || true)"; APP_PORT_NOW="${APP_PORT_NOW:-3000}"
 # Si el servidor ya tiene otra web (nginx, Apache...) en los puertos 80/443, no se usa Caddy:
 # la app queda en 127.0.0.1:APP_PORT y se publica con el servidor web existente.
 if ss -ltnH '( sport = :80 or sport = :443 )' 2>/dev/null | grep -q .; then
