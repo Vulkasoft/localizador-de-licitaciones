@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireSession } from '@/lib/api-auth';
 import { fetchPLACSPTenders, PLACSPTender } from '@/lib/placsp';
 import { scoreTender, classifyTender } from '@/lib/scoring';
 
@@ -9,6 +10,9 @@ import { scoreTender, classifyTender } from '@/lib/scoring';
  * Query params: month (YYYYMM), preview (true = don't save)
  */
 export async function GET(request: Request) {
+  const auth = await requireSession();
+  if (auth.response) return auth.response;
+
   try {
     const { searchParams } = new URL(request?.url ?? '');
     const preview = searchParams.get('preview') === 'true';

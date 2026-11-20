@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireSession } from '@/lib/api-auth';
 import { detectRegionFromText } from '@/lib/placsp';
 
 /**
@@ -8,6 +9,9 @@ import { detectRegionFromText } from '@/lib/placsp';
  * Uses the enhanced city/municipality mapping to detect regions from contracting body text.
  */
 export async function POST() {
+  const auth = await requireSession();
+  if (auth.response) return auth.response;
+
   try {
     // Get all tenders with null or empty regionCcaa
     const tenders = await prisma.tender.findMany({

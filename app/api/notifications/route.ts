@@ -1,8 +1,12 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireSession } from '@/lib/api-auth';
 
 export async function GET() {
+  const auth = await requireSession();
+  if (auth.response) return auth.response;
+
   try {
     const notifications = await prisma.notification.findMany({
       orderBy: { createdAt: 'desc' },
@@ -18,6 +22,9 @@ export async function GET() {
 }
 
 export async function DELETE(request: Request) {
+  const auth = await requireSession();
+  if (auth.response) return auth.response;
+
   try {
     const { searchParams } = new URL(request?.url ?? '');
     const id = searchParams.get('id');
@@ -35,6 +42,9 @@ export async function DELETE(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const auth = await requireSession();
+  if (auth.response) return auth.response;
+
   try {
     const body = await request.json();
     const { id, markAllRead } = body ?? {};

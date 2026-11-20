@@ -1,8 +1,12 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireSession } from '@/lib/api-auth';
 
 export async function GET(req: Request) {
+  const auth = await requireSession();
+  if (auth.response) return auth.response;
+
   try {
     const { searchParams } = new URL(req.url);
     const ccaa = searchParams.get('ccaa');

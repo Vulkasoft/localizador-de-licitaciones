@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireSession } from '@/lib/api-auth';
 import { getTenderObjectType } from '@/lib/scoring';
 
 // ---------------------------------------------------------------------------
@@ -49,6 +50,9 @@ function objectRelevant(t: { title: string; description?: string | null }) {
 }
 
 export async function GET() {
+  const auth = await requireSession();
+  if (auth.response) return auth.response;
+
   try {
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);

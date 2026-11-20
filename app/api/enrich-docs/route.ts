@@ -1,8 +1,7 @@
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 min max
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { requireSessionOrCron } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
 import { scrapePlacspDetail } from '@/lib/placsp-scraper';
 
@@ -17,13 +16,8 @@ import { scrapePlacspDetail } from '@/lib/placsp-scraper';
  */
 export async function POST(req: NextRequest) {
   // Auth: session OR Bearer ALARM_CRON_SECRET (for scheduled tasks)
-  const authHeader = req.headers.get('authorization') || '';
-  const cronSecret = process.env.ALARM_CRON_SECRET;
-  const isCron = cronSecret && authHeader === `Bearer ${cronSecret}`;
-  if (!isCron) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  }
+  const denied = await requireSessionOrCron(req);
+  if (denied) return denied;
 
   const body = await req.json().catch(() => ({}));
   const limit = Math.min(body.limit || 200, 500);

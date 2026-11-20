@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireSession } from '@/lib/api-auth';
 import { CCAA_DATA } from '@/lib/spain-geo';
 import { getTenderObjectType } from '@/lib/scoring';
 import { detectRegionFromText } from '@/lib/placsp';
@@ -133,6 +134,9 @@ const pliegosOR = [
 ];
 
 export async function GET() {
+  const auth = await requireSession();
+  if (auth.response) return auth.response;
+
   try {
     // Pending tenders — matches /api/tenders. Expired tenders are kept (not auto-removed);
     // only genuinely adjudicated/formalized ones (status closed) are excluded.

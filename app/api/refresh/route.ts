@@ -1,10 +1,15 @@
 export const dynamic = 'force-dynamic';
 import { prisma } from '@/lib/db';
+import { requireSessionOrCron } from '@/lib/api-auth';
 import { scoreTender, classifyTender } from '@/lib/scoring';
 import { fetchRecentPLACSPTenders } from '@/lib/placsp';
 import { scrapePlacspDetail } from '@/lib/placsp-scraper';
 
-export async function POST() {
+export async function POST(req: Request) {
+  // Auth: sesión o Bearer ALARM_CRON_SECRET (contenedor cron)
+  const denied = await requireSessionOrCron(req);
+  if (denied) return denied;
+
   // Auto-close ONLY adjudicated/formalized tenders before refresh.
   // Expired-by-deadline tenders are intentionally kept (not removed automatically).
   const now = new Date();
