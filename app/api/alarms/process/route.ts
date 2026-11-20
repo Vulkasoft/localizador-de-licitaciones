@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getFileUrl } from "@/lib/s3-files";
+import { sendEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -8,14 +9,11 @@ export async function POST(request: Request) {
   try {
     // Verify secret for cron security.
     // Primary: dedicated ALARM_CRON_SECRET (stable, does not rotate).
-    // Fallback: ABACUSAI_API_KEY (kept for backward compatibility).
     const authHeader = request.headers.get("authorization") || "";
     const cronSecret = process.env.ALARM_CRON_SECRET;
-    const apiKey = process.env.ABACUSAI_API_KEY;
 
     const authorized =
-      (cronSecret && authHeader === `Bearer ${cronSecret}`) ||
-      (apiKey && authHeader === `Bearer ${apiKey}`);
+      !!cronSecret && authHeader === `Bearer ${cronSecret}`;
 
     if (!authorized) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -200,21 +198,7 @@ export async function POST(request: Request) {
         let allSent = true;
         for (const email of emails) {
           try {
-            const res = await fetch("https://apps.abacus.ai/api/sendNotificationEmail", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                deployment_token: process.env.ABACUSAI_API_KEY,
-                app_id: process.env.WEB_APP_ID,
-                notification_id: process.env.NOTIF_ID_ALARMA_DE_PRESUPUESTOLICITACIN,
-                subject: `🔔 ALARMA: ${alarm.titulo} - ${urgencyText}`,
-                body: htmlBody,
-                is_html: true,
-                recipient_email: email,
-                sender_email: appUrl ? `noreply@${new URL(appUrl).hostname}` : undefined,
-                sender_alias: appName,
-              }),
-            });
+            const res = await sendEmail({ to: email, subject: `🔔 ALARMA: ${alarm.titulo} - ${urgencyText}`, html: htmlBody, fromName: appName });
             if (!res.ok) {
               console.error(`Error sending to ${email}: HTTP ${res.status}`);
               allSent = false;

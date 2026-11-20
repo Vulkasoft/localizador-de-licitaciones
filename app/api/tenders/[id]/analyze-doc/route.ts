@@ -6,6 +6,9 @@ import { authOptions } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { buildKey, uploadBuffer, getSignedDownloadUrl, objectExists } from '@/lib/s3';
 import { scrapePlacspDetail } from '@/lib/placsp-scraper';
+import Anthropic from '@anthropic-ai/sdk';
+
+const AI_MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-5-5';
 
 /**
  * Analiza un pliego (técnico o administrativo) de una licitación con IA.
@@ -93,7 +96,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
-  if (!process.env.ABACUSAI_API_KEY) {
+  if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'El servicio de IA no está configurado.' }, { status: 500 });
   }
 
@@ -141,45 +144,46 @@ Riesgos, penalizaciones, condiciones especiales o requisitos fáciles de pasar p
 Sé conciso pero completo. Usa viñetas. Si un dato no consta en el documento, indícalo explícitamente en lugar de inventarlo.`;
 
   try {
-    const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.ABACUSAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gemini-3.5-flash',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'file', file: { filename: `${doc}.pdf`, file_data: `data:application/pdf;base64,${base64String}` } },
-              { type: 'text', text: prompt },
-            ],
-          },
-        ],
-        max_tokens: 3500,
-        temperature: 0.2,
-      }),
-      signal: AbortSignal.timeout(280000),
+    const client = new Anthropic({ timeout: 280_000, maxRetries: 1 });
+    const stream = client.beta.messages.stream({
+      model: AI_MODEL,
+      max_tokens: 16000,
+      output_config: { effort: 'medium' },
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64String } },
+            { type: 'text', text: prompt },
+          ],
+        },
+      ],
     });
+    const message = await stream.finalMessage();
 
-    if (!response.ok) {
-      const errText = await response.text().catch(() => '');
-      console.error('[analyze-doc] LLM error', response.status, errText);
-      return NextResponse.json({ error: `El análisis con IA falló (código ${response.status}).` }, { status: 502 });
+    if (message.stop_reason === 'refusal') {
+      console.error('[analyze-doc] refusal', message.stop_details);
+      return NextResponse.json({ error: 'La IA no pudo analizar este documento.' }, { status: 502 });
     }
 
-    const data = await response.json();
-    const analysis = data?.choices?.[0]?.message?.content;
-    if (!analysis || typeof analysis !== 'string') {
+    const analysis = message.content
+      .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')
+      .map((b) => b.text)
+      .join('\n')
+      .trim();
+    if (!analysis) {
       return NextResponse.json({ error: 'La IA no devolvió ningún análisis.' }, { status: 502 });
     }
 
     return NextResponse.json({ analysis, docLabel });
   } catch (e: any) {
     console.error('[analyze-doc] exception', e?.message);
-    const msg = e?.name === 'TimeoutError' || e?.name === 'AbortError'
+    if (e instanceof Anthropic.APIError && !(e instanceof Anthropic.APIConnectionTimeoutError)) {
+      return NextResponse.json({ error: `El análisis con IA falló (código ${e.status ?? 'desconocido'}).` }, { status: 502 });
+    }
+    const msg = e instanceof Anthropic.APIConnectionTimeoutError || e?.name === 'TimeoutError' || e?.name === 'AbortError'
       ? 'El análisis tardó demasiado. Inténtalo de nuevo (los pliegos muy largos pueden no completarse).'
       : 'Error al analizar el documento con IA.';
     return NextResponse.json({ error: msg }, { status: 500 });

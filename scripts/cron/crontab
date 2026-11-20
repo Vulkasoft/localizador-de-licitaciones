@@ -1,0 +1,17 @@
+# Tareas programadas (horas en UTC). Equivalen a las que había en Abacus.
+# min hora dia mes dia_semana comando
+
+# Alarmas de presupuestos/licitaciones: envío diario de correos (Abacus: diario 08:05 UTC)
+5 8 * * * /bin/sh /cron/run-job.sh /api/alarms/process 300 >> /proc/1/fd/1 2>&1
+
+# Sincronización con Google Calendar (Abacus: cada hora)
+33 * * * * /bin/sh /cron/run-job.sh /api/calendar/google/cron-sync 300 >> /proc/1/fd/1 2>&1
+
+# Sincronización con Contasimple (Abacus: cada hora)
+37 * * * * /bin/sh /cron/run-job.sh /api/contasimple/cron-sync 600 >> /proc/1/fd/1 2>&1
+
+# Búsqueda de nuevas licitaciones en PLACSP (Abacus: cada 3 días; aquí diaria a las 04:15 UTC)
+15 4 * * * /bin/sh /cron/run-job.sh /api/refresh 1800 >> /proc/1/fd/1 2>&1
+
+# Enriquecimiento de pliegos/documentos (en Abacus se usaba de forma puntual; diario a las 05:20 UTC)
+20 5 * * * /bin/sh /cron/run-job.sh /api/enrich-docs 1800 >> /proc/1/fd/1 2>&1

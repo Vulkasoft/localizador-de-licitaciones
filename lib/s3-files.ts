@@ -8,7 +8,7 @@ import {
   CompleteMultipartUploadCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { getBucketConfig, createS3Client } from "./aws-config";
+import { getBucketConfig, createS3Client, getPublicObjectUrl } from "./aws-config";
 
 const config = getBucketConfig();
 const s3Client = createS3Client();
@@ -143,7 +143,7 @@ export async function getFileUrl(
 ): Promise<string> {
   try {
     if (isPublic) {
-      return `https://${config.bucketName}.s3.amazonaws.com/${cloud_storage_path}`;
+      return getPublicObjectUrl(cloud_storage_path);
     } else {
       const disposition = downloadFilename
         ? buildContentDisposition(downloadFilename)
@@ -172,7 +172,7 @@ export async function getFileUrlForPreview(
 ): Promise<string> {
   try {
     if (isPublic) {
-      return `https://${config.bucketName}.s3.amazonaws.com/${cloud_storage_path}`;
+      return getPublicObjectUrl(cloud_storage_path);
     } else {
       const command = new GetObjectCommand({
         Bucket: config.bucketName,

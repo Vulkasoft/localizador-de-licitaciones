@@ -1,11 +1,11 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { getS3ClientConfig } from './aws-config';
 
-const REGION = process.env.AWS_REGION ?? 'us-west-2';
 const BUCKET = process.env.AWS_BUCKET_NAME ?? '';
 const PREFIX = (process.env.AWS_FOLDER_PREFIX ?? '').replace(/\/$/, '');
 
-export const s3 = new S3Client({ region: REGION });
+export const s3 = new S3Client({ region: 'us-west-2', ...getS3ClientConfig() });
 
 export function buildKey(suffix: string): string {
   const clean = suffix.replace(/^\//, '');

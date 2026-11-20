@@ -11,6 +11,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [agentKey, setAgentKey] = useState('');
+  const [origin, setOrigin] = useState('');
+  useEffect(() => { setOrigin(window.location.origin); }, []);
   const [showKey, setShowKey] = useState(false);
 
   useEffect(() => {
@@ -150,7 +152,7 @@ export default function SettingsPage() {
           <div className="space-y-2 pt-2 border-t">
             <label className="text-sm font-medium flex items-center gap-2"><KeyRound className="w-4 h-4" /> Clave API del agente</label>
             <p className="text-xs text-muted-foreground">
-              Pégala en ChatGPT como token de acceso (esquema “Portador”). URL del servidor: <code className="font-mono bg-muted px-1 py-0.5 rounded">https://localizandotudron.abacusai.app/api/mcp</code>
+              Pégala en ChatGPT como token de acceso (esquema “Portador”). URL del servidor: <code className="font-mono bg-muted px-1 py-0.5 rounded">{origin}/api/mcp</code>
             </p>
             <div className="flex items-center gap-2">
               <code className="flex-1 font-mono text-xs bg-muted px-3 py-2 rounded-lg overflow-x-auto whitespace-nowrap">

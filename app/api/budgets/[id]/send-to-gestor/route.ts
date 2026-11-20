@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getFileUrl } from "@/lib/s3-files";
 import { z } from "zod";
+import { sendEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -139,32 +140,11 @@ export async function POST(
 
     for (const email of recipients) {
       try {
-        const res = await fetch("https://apps.abacus.ai/api/sendNotificationEmail", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.ABACUSAI_API_KEY}`,
-          },
-          body: JSON.stringify({
-            app_id: process.env.WEB_APP_ID,
-            notification_id: process.env.NOTIF_ID_ENVO_AL_GESTOR,
-            subject: `Documentación presupuesto ${ref}`,
-            body: htmlBody,
-            is_html: true,
-            recipient_email: email,
-            sender_email: appUrl ? `noreply@${new URL(appUrl).hostname}` : undefined,
-            sender_alias: "Gestión DJI",
-          }),
-        });
-        const result = await res.json().catch(() => ({}));
-        if (!res.ok || result?.success === false) {
-          if (result?.notification_disabled) {
-            sentCount++;
-          } else {
-            errors.push(`${email}: ${result?.message || (await res.text().catch(() => "error"))}`);
-          }
-        } else {
+        const res = await sendEmail({ to: email, subject: `Documentación presupuesto ${ref}`, html: htmlBody, fromName: "Gestión DJI" });
+        if (res.ok) {
           sentCount++;
+        } else {
+          errors.push(`${email}: ${res.error || "error"}`);
         }
       } catch (emailError) {
         errors.push(`${email}: ${String(emailError)}`);

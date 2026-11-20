@@ -36,11 +36,11 @@ export function decryptToken(payload: string): string {
 
 // ---- Redirect URI ----
 // Must EXACTLY match a redirect URI registered in Google Cloud Console.
-// Registered: https://localizandotudron.abacusai.app/api/calendar/google/callback
+// Debe registrarse en Google Cloud Console: <NEXTAUTH_URL>/api/calendar/google/callback
 export function getRedirectUri(): string {
   const explicit = process.env.GOOGLE_CALENDAR_REDIRECT_URI;
   if (explicit) return explicit;
-  const base = (process.env.NEXTAUTH_URL || "https://localizandotudron.abacusai.app").replace(/\/$/, "");
+  const base = (process.env.NEXTAUTH_URL || "http://localhost:3000").replace(/\/$/, "");
   return `${base}/api/calendar/google/callback`;
 }
 

@@ -9,10 +9,8 @@ import { pullEventsFromGoogle, pushAllLocalEvents } from "@/lib/google-calendar"
 export async function POST(request: Request) {
   const authHeader = request.headers.get("authorization") || "";
   const cronSecret = process.env.ALARM_CRON_SECRET;
-  const apiKey = process.env.ABACUSAI_API_KEY;
   const authorized =
-    (cronSecret && authHeader === `Bearer ${cronSecret}`) ||
-    (apiKey && authHeader === `Bearer ${apiKey}`);
+    !!cronSecret && authHeader === `Bearer ${cronSecret}`;
   if (!authorized) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }

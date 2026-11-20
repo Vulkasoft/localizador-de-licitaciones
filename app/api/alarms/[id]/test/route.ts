@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getFileUrl } from "@/lib/s3-files";
+import { sendEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -155,23 +156,7 @@ export async function POST(
 
     for (const email of emails) {
       try {
-        const res = await fetch("https://apps.abacus.ai/api/sendNotificationEmail", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            deployment_token: process.env.ABACUSAI_API_KEY,
-            app_id: process.env.WEB_APP_ID,
-            notification_id: process.env.NOTIF_ID_ALARMA_DE_PRESUPUESTOLICITACIN,
-            subject: `🧪 [PRUEBA] ALARMA: ${alarm.titulo}`,
-            body: htmlBody,
-            is_html: true,
-            recipient_email: email,
-            sender_email: appUrl
-              ? `noreply@${new URL(appUrl).hostname}`
-              : undefined,
-            sender_alias: appName,
-          }),
-        });
+        const res = await sendEmail({ to: email, subject: `🧪 [PRUEBA] ALARMA: ${alarm.titulo}`, html: htmlBody, fromName: appName });
         if (!res.ok) {
           const errText = await res.text();
           errors.push(`${email}: ${errText}`);
