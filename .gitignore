@@ -1,0 +1,13 @@
+node_modules/
+.next/
+out/
+build/
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+__abacus_error_reporter.js
+npm-debug.log*
+yarn-error.log*
+.DS_Store
+backups/

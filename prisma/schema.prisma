@@ -1,0 +1,669 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/localizador_licitaciones/nextjs_space/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String        @id @default(cuid())
+  name          String?
+  email         String        @unique
+  password      String?
+  role          String        @default("user")
+  emailVerified DateTime?
+  image         String?
+  provider      String        @default("credentials")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  favorites     Favorite[]
+  savedSearches SavedSearch[]
+  accounts      Account[]
+  sessions      Session[]
+  budgets       Budget[]
+  auditLogs     AuditLog[]
+  notes         Note[]
+  events        Event[]
+  alarms        Alarm[]
+  orders        Order[]
+  creditRetentions CreditRetention[]
+  profitShares  ProfitShare[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum BudgetType {
+  LICITACION
+  CONTRATO_MENOR
+  NORMAL
+  OTRO
+}
+
+enum BudgetStatus {
+  PENDIENTE
+  PENDIENTE_MORA
+  PENDIENTE_OROZCO
+  PENDIENTE_RETENCION_CREDITO
+  LICITACION_ENVIADA
+  PRESUPUESTO_ENVIADO
+  ENTREGADO
+  PAGADO
+}
+
+enum FileType {
+  PRESUPUESTO
+  FACTURA
+  FACTURA_COMPRA
+  OTRO
+}
+
+enum OrderStatus {
+  SOLICITADO
+  CONFIRMADO
+  EN_TRANSITO
+  EN_ADUANA
+  RECIBIDO
+  INCIDENCIA
+  CANCELADO
+}
+
+enum OrderFileType {
+  FACTURA_PAGO
+  TRANSFERENCIA
+  OTRO
+}
+
+enum NoteStatus {
+  PENDING
+  DONE
+  ATTEMPTED
+  COMPLETED
+}
+
+enum AlarmStatus {
+  ACTIVA
+  ENVIADA
+  VENCIDA
+  CANCELADA
+}
+
+enum CreditRetentionStatus {
+  PENDIENTE
+  CONCEDIDA
+  PEDIDO_REALIZADO
+  RECHAZADA
+  CANCELADA
+}
+
+enum ProfitShareStatus {
+  PENDIENTE
+  PAGADO
+}
+
+enum ProfitShareFileType {
+  TRANSFERENCIA
+  FACTURA_VULKASOFT
+  OTRO
+}
+
+model Customer {
+  id            String   @id @default(cuid())
+  contasimpleId Int?     @unique
+  contasimpleIdPeninsula Int?
+  contasimpleIdCanarias  Int?
+  nombre        String
+  nif           String?
+  direccion     String?
+  provincia     String?
+  ciudad        String?
+  codigoPostal  String?
+  pais          String?
+  telefono      String?
+  movil         String?
+  email         String?
+  notas         String?  @db.Text
+  url           String?
+  etiqueta      String?
+  color         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  budgets Budget[]
+  tenders Tender[]
+  notes   Note[]
+
+  @@index([contasimpleId])
+  @@index([contasimpleIdPeninsula])
+  @@index([contasimpleIdCanarias])
+  @@index([nombre])
+  @@index([nif])
+}
+
+model Budget {
+  id                String       @id @default(cuid())
+  userId            String
+  customerId        String?
+  tenderId          String?
+  contasimpleId     Int?         @unique
+  contasimpleNumber String?
+  contasimpleCompany String?
+  contasimpleEstado String?
+  lineasJson        String?      @db.Text
+  baseImponible     Float?
+  totalIva          Float?
+  totalConIva       Float?
+  nombre            String?
+  cliente           String?
+  comunidadAutonoma String?
+  ciudad            String?
+  tipo              BudgetType   @default(NORMAL)
+  tipoCustom        String?
+  fechaSolicitud    DateTime?
+  fechaEntrega      DateTime?
+  fechaPlazo        DateTime?
+  estado            BudgetStatus @default(PENDIENTE)
+  descripcion       String?      @db.Text
+  notas             String?      @db.Text
+  facturado         Boolean      @default(false)
+  numeroFactura     String?
+  fechaFactura      DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer  Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  tender    Tender?      @relation(fields: [tenderId], references: [id], onDelete: SetNull)
+  files     BudgetFile[]
+  auditLogs AuditLog[]
+  notes     Note[]
+  events    Event[]
+  alarms    Alarm[]
+  orders    Order[]      @relation("OrderBudget")
+  profitShares ProfitShare[] @relation("BudgetProfitShare")
+
+  @@index([userId])
+  @@index([customerId])
+  @@index([tenderId])
+  @@index([estado])
+  @@index([tipo])
+  @@index([comunidadAutonoma])
+}
+
+model BudgetFile {
+  id         String   @id @default(cuid())
+  budgetId   String
+  filename   String
+  s3Key      String
+  tipo       FileType @default(OTRO)
+  fileSize   Int?
+  isPublic   Boolean  @default(false)
+  uploadedAt DateTime @default(now())
+
+  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  @@index([budgetId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  budgetId  String
+  userId    String
+  accion    String
+  detalles  String   @db.Text
+  createdAt DateTime @default(now())
+
+  budget Budget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([budgetId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Note {
+  id          String     @id @default(cuid())
+  budgetId    String?
+  customerId  String?
+  tenderId    String?
+  userId      String
+  titulo      String
+  descripcion String?    @db.Text
+  color       String?
+  estado      NoteStatus @default(PENDING)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  budget   Budget?    @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  customer Customer?  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tender   Tender?    @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alarms   Alarm[]
+  files    NoteFile[]
+
+  @@index([budgetId])
+  @@index([customerId])
+  @@index([tenderId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Alarm {
+  id             String      @id @default(cuid())
+  userId         String
+  budgetId       String?
+  noteId         String?
+  tenderId       String?
+  titulo         String
+  descripcion    String?     @db.Text
+  fechaLimite    DateTime
+  diasAntelacion Int         @default(1)
+  emailsDestino  String      @db.Text
+  documentos     String?     @db.Text
+  estado         AlarmStatus @default(ACTIVA)
+  enviada        Boolean     @default(false)
+  fechaEnvio     DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budget     Budget?     @relation(fields: [budgetId], references: [id], onDelete: SetNull)
+  note       Note?       @relation(fields: [noteId], references: [id], onDelete: SetNull)
+  tender     Tender?     @relation(fields: [tenderId], references: [id], onDelete: SetNull)
+  alarmFiles AlarmFile[]
+
+  @@index([userId])
+  @@index([budgetId])
+  @@index([noteId])
+  @@index([tenderId])
+  @@index([fechaLimite])
+  @@index([estado])
+}
+
+model AlarmFile {
+  id         String   @id @default(cuid())
+  alarmId    String
+  filename   String
+  s3Key      String
+  fileSize   Int?
+  isPublic   Boolean  @default(false)
+  uploadedAt DateTime @default(now())
+
+  alarm Alarm @relation(fields: [alarmId], references: [id], onDelete: Cascade)
+
+  @@index([alarmId])
+}
+
+model NoteFile {
+  id         String   @id @default(cuid())
+  noteId     String
+  filename   String
+  s3Key      String
+  fileSize   Int?
+  isPublic   Boolean  @default(false)
+  uploadedAt DateTime @default(now())
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([noteId])
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  userId      String
+  budgetId    String?
+  titulo      String
+  descripcion String?  @db.Text
+  fechaHora   DateTime
+  lugar       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  googleEventId    String?
+  googleCalendarId String?
+  syncedAt         DateTime?
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budget Budget? @relation(fields: [budgetId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([budgetId])
+  @@index([fechaHora])
+  @@index([googleEventId])
+  @@unique([userId, googleEventId])
+}
+
+model AgentSettings {
+  id          String    @id @default(cuid())
+  enabled     Boolean   @default(false)
+  apiKeyHash  String?
+  apiKeyHint  String?
+  channelId   String?
+  ownerUserId String?
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model GoogleCalendarAccount {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  email          String?
+  refreshToken   String    @db.Text
+  accessToken    String?   @db.Text
+  expiryDate     DateTime?
+  calendarId     String    @default("primary")
+  calendarName   String?
+  syncDirection  String    @default("bidirectional")
+  lastSyncAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Tender {
+  id                    String         @id @default(cuid())
+  source                String         @default("PLACSP")
+  sourceId              String?        @unique
+  title                 String
+  description           String?
+  contractingBody       String
+  buyerType             String?
+  cpvCodes              String?
+  budgetAmount          Float?
+  budgetCurrency        String         @default("EUR")
+  deadline              DateTime?
+  publicationDate       DateTime?
+  status                String         @default("active")
+  regionCcaa            String?
+  province              String?
+  municipality          String?
+  category              String?
+  score                 Int            @default(0)
+  classification        String?
+  lotsJson              String?
+  documentsJson         String?
+  sourceUrl             String?
+  isMinorContract       Boolean        @default(false)
+  latitude              Float?
+  longitude             Float?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  adminDocUrl           String?
+  technicalDocUrl       String?
+  cachedAdminDocUrl     String?
+  cachedTechnicalDocUrl String?
+  awardedAmount         Float?
+  awardedDate           DateTime?
+  awardedTo             String?
+  tenderPhase           String         @default("licitacion")
+  dismissed             Boolean        @default(false)
+  dismissedAt           DateTime?
+  customerId            String?
+  favorites             Favorite[]
+  notifications         Notification[]
+  notes                 Note[]
+  budgets               Budget[]
+  alarms                Alarm[]
+  customer              Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([customerId])
+  @@index([regionCcaa])
+  @@index([score])
+  @@index([deadline])
+  @@index([category])
+  @@index([tenderPhase])
+  @@index([awardedTo])
+  @@index([dismissed])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String
+  title     String
+  message   String
+  tenderId  String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  tender    Tender?  @relation(fields: [tenderId], references: [id])
+
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  tenderId  String
+  userId    String
+  notes     String?
+  createdAt DateTime @default(now())
+  tender    Tender   @relation(fields: [tenderId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, tenderId])
+}
+
+model Buyer {
+  id                  String   @id @default(cuid())
+  name                String   @unique
+  type                String?
+  region              String?
+  province            String?
+  historicalPurchases String?
+  tenderCount         Int      @default(0)
+  createdAt           DateTime @default(now())
+}
+
+model NewsSignal {
+  id             String    @id @default(cuid())
+  title          String
+  description    String?
+  sourceUrl      String?
+  sourceType     String?
+  region         String?
+  relevanceScore Int       @default(50)
+  publishedAt    DateTime?
+  createdAt      DateTime  @default(now())
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
+
+model RefreshLog {
+  id           String    @id @default(cuid())
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+  tendersFound Int       @default(0)
+  status       String    @default("running")
+}
+
+model Order {
+  id                String      @id @default(cuid())
+  userId            String
+  numeroAcopio      String?
+  numeroPedido      String?
+  numeroSeguimiento String?
+  referencia        String?
+  referenciaTipo    String?
+  budgetId          String?
+  empresa           String?
+  origen            String?
+  quienPidio        String?
+  fechaSolicitud    DateTime?
+  estado            OrderStatus @default(SOLICITADO)
+  descripcion       String?     @db.Text
+  notas             String?     @db.Text
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budget Budget?     @relation("OrderBudget", fields: [budgetId], references: [id], onDelete: SetNull)
+  files  OrderFile[]
+
+  @@index([userId])
+  @@index([estado])
+  @@index([empresa])
+  @@index([referencia])
+  @@index([budgetId])
+  @@index([fechaSolicitud])
+}
+
+model OrderFile {
+  id         String        @id @default(cuid())
+  orderId    String
+  filename   String
+  s3Key      String
+  tipo       OrderFileType @default(OTRO)
+  fileSize   Int?
+  isPublic   Boolean       @default(false)
+  uploadedAt DateTime      @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+model CreditRetention {
+  id             String                @id @default(cuid())
+  userId         String
+  organismo      String?
+  expediente     String?
+  referencia     String?
+  importe        Float?
+  fechaSolicitud DateTime?
+  fechaConcesion DateTime?
+  numeroRC       String?
+  estado         CreditRetentionStatus @default(PENDIENTE)
+  descripcion    String?               @db.Text
+  notas          String?               @db.Text
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([estado])
+  @@index([organismo])
+  @@index([fechaSolicitud])
+}
+
+model ProfitShare {
+  id             String            @id @default(cuid())
+  userId         String
+  concepto       String?
+  referencia     String?
+  referenciaTipo String?
+  budgetId       String?
+  importeVenta   Float?
+  beneficio      Float             @default(0)
+  parteVulkasoft Float             @default(0)
+  parteBluedrone Float             @default(0)
+  estado         ProfitShareStatus @default(PENDIENTE)
+  fechaVenta     DateTime?
+  fechaPago      DateTime?
+  notas          String?           @db.Text
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  user   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budget Budget?           @relation("BudgetProfitShare", fields: [budgetId], references: [id], onDelete: SetNull)
+  files  ProfitShareFile[]
+
+  @@index([userId])
+  @@index([estado])
+  @@index([referencia])
+  @@index([budgetId])
+  @@index([fechaVenta])
+}
+
+model ProfitShareFile {
+  id            String              @id @default(cuid())
+  profitShareId String
+  filename      String
+  s3Key         String
+  tipo          ProfitShareFileType @default(OTRO)
+  fileSize      Int?
+  isPublic      Boolean             @default(false)
+  uploadedAt    DateTime            @default(now())
+
+  profitShare ProfitShare @relation(fields: [profitShareId], references: [id], onDelete: Cascade)
+
+  @@index([profitShareId])
+}
+
+model TrainingEnrollment {
+  id                       String    @id @default(cuid())
+  enrollmentId             Int       @unique
+  studentCode              String    @unique
+  orderId                  Int?
+  orderReference           String?
+  courseName               String?
+  firstName                String?
+  lastName                 String?
+  company                  String?
+  driveFolderId            String?
+  driveFolderUrl           String?
+  driveMatriculaFileId     String?
+  driveFacturaFileId       String?
+  driveJustificanteFileId  String?
+  contasimpleInvoiceId     String?
+  contasimpleInvoiceNumber String?
+  paidAt                   DateTime?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  @@index([orderId])
+  @@index([studentCode])
+}
+
+model SavedSearch {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  queryParams String
+  emailAlerts Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
