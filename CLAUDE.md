@@ -13,12 +13,13 @@ el usuario no es técnico, así que explica los pasos con lenguaje sencillo.
 - `.env` (no está en git) ya existe. `COMPOSE_FILE` incluye
   `deploy/docker-compose.proxy-externo.yml`: el contenedor `app` está en la red
   Docker `licitaciones-entry` con el alias `licitaciones-app`.
-- HTTPS: lo da el Caddy de OTRO proyecto, el contenedor `vulka-ai-os-caddy-1`. Su
-  configuración es `/home/ubuntu/vulka-ai-os/Caddyfile`, que ya tiene el bloque
-  `licitaciones.nexcan.es { reverse_proxy licitaciones-app:3000 }`. Después de editarlo:
-  `docker exec vulka-ai-os-caddy-1 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile`
-  y luego `caddy reload` con los mismos argumentos. Edítalo en el sitio (con `cat >>` o un
-  editor), nunca con `sed -i`: el archivo se monta en el contenedor directamente.
+- HTTPS: hoy lo da el Caddy de vulka-ai-os (`vulka-ai-os-caddy-1`, con la configuración en
+  `/home/ubuntu/vulka-ai-os/Caddyfile`, editado a mano). **Se va a sustituir** por el
+  proxy independiente `infra/proxy/` (que se instala en `/opt/proxy`, contenedor
+  `proxy-caddy`), con `infra/proxy/migrar-desde-vulka.sh`, en cuanto se fusione
+  https://github.com/Vulkasoft/vulka-ai-os/pull/23. Después, el sitio de esta app es
+  `/opt/proxy/sites/licitaciones.caddy` y se recarga con `/opt/proxy/recargar.sh`. Lee
+  `infra/proxy/README.md`.
 
 ### Convivencia con otros proyectos
 
@@ -28,9 +29,8 @@ El servidor aloja varios proyectos y no deben interferir entre sí:
 - No publiques puertos al exterior. Los internos van en `127.0.0.1` (este usa el 3000).
 - Límites de memoria y CPU en `docker-compose.yml`: app 2 GB / 2 CPU, db 1 GB / 1 CPU,
   ajustables con `APP_MEM_LIMIT`, `APP_CPUS`, `DB_MEM_LIMIT` y `DB_CPUS` en `.env`.
-- La única pieza compartida es Caddy (puertos 80/443). Mejora recomendada, sin aplicar:
-  sacar Caddy de vulka-ai-os a un proyecto propio (`/opt/proxy`) del que cuelguen todas
-  las webs, para que reiniciar un proyecto no corte las demás. Pide permiso antes.
+- La única pieza compartida es el proxy (puertos 80/443): `/opt/proxy`, independiente de
+  todos los proyectos. Cada web tiene allí su archivo en `sites/`.
 
 ### No tocar
 
@@ -60,11 +60,12 @@ Pendiente, en este orden:
    en el chat. Después: `docker compose up -d`.
 3. **Archivos adjuntos**: `scripts/migrar-archivos-desde-abacus.mjs` (ver DESPLIEGUE.md,
    paso 5). Necesita el bucket S3 nuevo con CORS y que la app de Abacus siga activa.
-4. **Hacer permanente la red de Caddy**: `docker network connect licitaciones-entry
-   vulka-ai-os-caddy-1` se pierde si ese contenedor se recrea. Hay que añadir la red
-   externa `licitaciones-entry` en el docker-compose de vulka-ai-os
-   (`/home/ubuntu/vulka-ai-os/`), igual que las redes `vsremote-*`. Enseña el cambio al
-   usuario antes de aplicarlo.
+4. **Proxy independiente**: cuando el usuario fusione vulka-ai-os#23, ejecuta
+   `infra/proxy/migrar-desde-vulka.sh` como root. Antes, compara
+   `docker exec vulka-ai-os-caddy-1 cat /etc/caddy/Caddyfile` con `infra/proxy/sites/`,
+   `infra/proxy/extensions/` y `caddy/site.caddy` de vulka-ai-os. Si hay rutas que no
+   estén recogidas, añádelas antes de migrar. Con esto la red queda declarada en el
+   compose del proxy y es permanente.
 5. **Copias de seguridad**: añadir un `pg_dump` diario con rotación (y, si hay bucket,
    una copia fuera del servidor). Recomendar el Backup automático de OVH.
 6. **Comprobar en real**: búsqueda PLACSP (`/api/refresh`), envío de correos, análisis

@@ -1,0 +1,10 @@
+# Localizador de Licitaciones (/opt/localizador-de-licitaciones)
+licitaciones.nexcan.es {
+	encode zstd gzip
+	request_body {
+		max_size 50MB
+	}
+	reverse_proxy licitaciones-app:3000 {
+		flush_interval -1
+	}
+}

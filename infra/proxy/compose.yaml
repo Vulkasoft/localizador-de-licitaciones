@@ -1,0 +1,45 @@
+# Proxy compartido del servidor: la única puerta de entrada web (puertos 80/443)
+# para todos los proyectos. Se instala en /opt/proxy. Cada proyecto sigue en su
+# propio docker compose; aquí solo se declara cómo llegar a él.
+name: proxy
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    container_name: proxy-caddy
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      # Dominio de Vulka AI OS (lo usa su caddy/site.caddy)
+      APP_DOMAIN: ${APP_DOMAIN:?Define APP_DOMAIN en /opt/proxy/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./sites:/etc/caddy/sites:ro
+      - ./extensions:/etc/caddy/extensions:ro
+      # Vulka AI OS mantiene su sitio en su repositorio (caddy/site.caddy)
+      - /home/ubuntu/vulka-ai-os/caddy:/etc/caddy/projects/vulka-ai-os:ro
+      # Certificados y estado: los mismos volúmenes que usaba el Caddy de vulka-ai-os
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - vulka-ai-os_edge
+      - vsremote-assist-entry
+      - vsremote-pilot-entry
+      - vsremote-preview-entry
+      - licitaciones-entry
+    mem_limit: 256m
+    cpus: 1.0
+
+networks:
+  vulka-ai-os_edge: {external: true}
+  vsremote-assist-entry: {external: true}
+  vsremote-pilot-entry: {external: true}
+  vsremote-preview-entry: {external: true}
+  licitaciones-entry: {external: true}
+
+volumes:
+  caddy_data:
+    external: true
+    name: vulka-ai-os_caddy_data
+  caddy_config:
+    external: true
+    name: vulka-ai-os_caddy_config

@@ -1,0 +1,7 @@
+# Proxy compartido. No pongas sitios aquí: cada web tiene su propio archivo.
+#  - projects/<proyecto>/site.caddy  -> sitios que mantiene cada repositorio (montados)
+#  - sites/<web>.caddy                -> sitios definidos en este proxy
+#  - extensions/<proyecto>/*.caddy    -> rutas extra dentro del dominio de otro proyecto
+# Tras cualquier cambio:  ./recargar.sh
+import /etc/caddy/projects/*/site.caddy
+import /etc/caddy/sites/*.caddy

@@ -1,0 +1,8 @@
+# VulkaSoft Remote: asistencia (Jitsi)
+vulkaremote.nexcan.es {
+	header Referrer-Policy no-referrer
+	reverse_proxy vsremote-assist-web:8000
+	handle_errors {
+		respond "Asistencia no disponible" 503
+	}
+}

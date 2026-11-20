@@ -1,0 +1,11 @@
+# VulkaSoft Remote: isolated synthetic preview, servido bajo el dominio de Vulka AI OS
+handle /vsremote/* {
+	@vsremote_panel_viewer {
+		path /vsremote/panel/
+		method GET HEAD
+	}
+	header @vsremote_panel_viewer Content-Security-Policy "default-src 'none'; script-src 'self' https://vulkaremote.nexcan.es/external_api.js; connect-src 'self'; frame-src https://vulkaremote.nexcan.es; style-src 'self' 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
+	reverse_proxy vsremote-pilot-gateway:8080 {
+		header_up X-VSRemote-Client-IP {remote_host}
+	}
+}

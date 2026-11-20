@@ -139,7 +139,11 @@ if ss -ltnH '( sport = :80 or sport = :443 )' 2>/dev/null | grep -q .; then
   docker compose ps
   say "Listo (falta publicarla en tu servidor web)"
   echo "La app escucha en http://127.0.0.1:${APP_PORT_NOW}."
-  if [ -n "${PROXY_CONTAINER:-}" ]; then
+  if [ -d /opt/proxy/sites ]; then
+    printf '%s {\n\tencode zstd gzip\n\trequest_body {\n\t\tmax_size 50MB\n\t}\n\treverse_proxy licitaciones-app:3000 {\n\t\tflush_interval -1\n\t}\n}\n' "$DOMAIN_NOW" > /opt/proxy/sites/licitaciones.caddy
+    grep -q "licitaciones-entry" /opt/proxy/compose.yaml || echo "AVISO: añade la red licitaciones-entry a /opt/proxy/compose.yaml"
+    /opt/proxy/recargar.sh && echo "Publicada en https://${DOMAIN_NOW} a través del proxy compartido (/opt/proxy)."
+  elif [ -n "${PROXY_CONTAINER:-}" ]; then
     echo "Para publicarla, añade este bloque al Caddyfile de $PROXY_CONTAINER y recarga Caddy:"
     echo
     printf '%s {\n\tencode zstd gzip\n\trequest_body {\n\t\tmax_size 50MB\n\t}\n\treverse_proxy licitaciones-app:3000 {\n\t\tflush_interval -1\n\t}\n}\n' "$DOMAIN_NOW"
