@@ -35,18 +35,20 @@ docker compose stop app cron >/dev/null
 
 echo "==> Vaciando la base de datos local"
 docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "$U" -d "$D" -q \
-  -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+  -c "SET client_min_messages = warning; DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 
 echo "==> Restaurando $FILE"
 case "$FILE" in
   *.dump|*.backup)
-    docker compose exec -T db pg_restore --no-owner --no-privileges -U "$U" -d "$D" < "$FILE" || \
+    docker compose exec -T db pg_restore --no-owner --no-privileges --disable-triggers -U "$U" -d "$D" < "$FILE" || \
       echo "pg_restore terminó con avisos; revisa los mensajes de arriba." >&2 ;;
   *.gz)
-    gunzip -c "$FILE" | grep -vE '^(ALTER .* OWNER TO|GRANT |REVOKE )' | \
+    { echo "SET session_replication_role = replica;"; gunzip -c "$FILE" | grep -vE '^(ALTER .* OWNER TO|GRANT |REVOKE )'; } | \
       docker compose exec -T db psql -U "$U" -d "$D" -q ;;
   *)
-    grep -vE '^(ALTER .* OWNER TO|GRANT |REVOKE )' "$FILE" | \
+    # session_replication_role=replica: no comprueba claves foráneas durante la carga,
+    # porque algunas exportaciones (p. ej. la de DeepAgent) insertan las tablas por orden alfabético.
+    { echo "SET session_replication_role = replica;"; grep -vE '^(ALTER .* OWNER TO|GRANT |REVOKE )' "$FILE"; } | \
       docker compose exec -T db psql -U "$U" -d "$D" -q ;;
 esac
 
