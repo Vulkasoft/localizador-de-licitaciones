@@ -96,6 +96,22 @@ else
   echo "  nano .env    y luego    docker compose up -d"
 fi
 
+# ---------- 2b. Proxy existente en Docker ----------
+# Si los puertos 80/443 los usa un contenedor (p. ej. un Caddy de otro proyecto),
+# conecta la app a ese proxy mediante una red Docker compartida.
+PROXY_CONTAINER="$(docker ps --format '{{.Names}} {{.Ports}}' | awk '/:443->/{print $1; exit}')"
+if [ -n "$PROXY_CONTAINER" ]; then
+  say "Proxy existente detectado: $PROXY_CONTAINER"
+  NET="licitaciones-entry"
+  docker network inspect "$NET" >/dev/null 2>&1 || docker network create "$NET" >/dev/null
+  if ! docker inspect "$PROXY_CONTAINER" --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}' | grep -qw "$NET"; then
+    docker network connect "$NET" "$PROXY_CONTAINER"
+  fi
+  set_env COMPOSE_FILE "docker-compose.yml:deploy/docker-compose.proxy-externo.yml"
+  set_env PROXY_NETWORK "$NET"
+  echo "Red '$NET' creada y conectada a $PROXY_CONTAINER. La app se llamará 'licitaciones-app' en esa red."
+fi
+
 # ---------- 3. Base de datos ----------
 say "3/4 Base de datos"
 ask ABACUS_DATABASE_URL "URL de la base de datos de Abacus para copiar los datos (Enter para empezar vacía)" ""
@@ -123,8 +139,14 @@ if ss -ltnH '( sport = :80 or sport = :443 )' 2>/dev/null | grep -q .; then
   docker compose ps
   say "Listo (falta publicarla en tu servidor web)"
   echo "La app escucha en http://127.0.0.1:${APP_PORT_NOW}."
-  echo "Añade un sitio para ${DOMAIN_NOW} en tu servidor web que haga proxy a esa dirección."
-  echo "Ejemplos listos: deploy/caddy-licitaciones.caddy (Caddy) y deploy/nginx-licitaciones.conf (nginx)"
+  if [ -n "${PROXY_CONTAINER:-}" ]; then
+    echo "Para publicarla, añade este bloque al Caddyfile de $PROXY_CONTAINER y recarga Caddy:"
+    echo
+    printf '%s {\n\tencode zstd gzip\n\trequest_body {\n\t\tmax_size 50MB\n\t}\n\treverse_proxy licitaciones-app:3000 {\n\t\tflush_interval -1\n\t}\n}\n' "$DOMAIN_NOW"
+  else
+    echo "Añade un sitio para ${DOMAIN_NOW} en tu servidor web que haga proxy a esa dirección."
+    echo "Ejemplos listos: deploy/caddy-licitaciones.caddy (Caddy) y deploy/nginx-licitaciones.conf (nginx)"
+  fi
 else
   docker compose --profile https up -d --build
   docker compose ps

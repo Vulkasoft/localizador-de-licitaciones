@@ -1,0 +1,21 @@
+# Para servidores donde ya hay un proxy (Caddy, Traefik...) corriendo en Docker.
+# Conecta el contenedor "app" a una red compartida con ese proxy, con el nombre
+# "licitaciones-app", para que el proxy haga:  reverse_proxy licitaciones-app:3000
+#
+# Se activa poniendo en .env:
+#   COMPOSE_FILE=docker-compose.yml:deploy/docker-compose.proxy-externo.yml
+#   PROXY_NETWORK=licitaciones-entry
+# y creando la red y conectando el proxy (lo hace scripts/instalar-servidor.sh):
+#   docker network create licitaciones-entry
+#   docker network connect licitaciones-entry <contenedor-del-proxy>
+services:
+  app:
+    networks:
+      default: {}
+      proxy:
+        aliases: [licitaciones-app]
+
+networks:
+  proxy:
+    name: ${PROXY_NETWORK:-licitaciones-entry}
+    external: true
