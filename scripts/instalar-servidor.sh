@@ -58,6 +58,10 @@ else
   set_env NEXTAUTH_URL "https://$DOMAIN"
   ask NEXTAUTH_SECRET "NEXTAUTH_SECRET de Abacus (Enter para generar uno nuevo; habrá que volver a iniciar sesión)" ""
   set_env NEXTAUTH_SECRET "${NEXTAUTH_SECRET:-$(openssl rand -base64 32)}"
+  if ss -ltnH '( sport = :3000 )' 2>/dev/null | grep -q .; then
+    ask APP_PORT "El puerto 3000 ya está ocupado. Puerto local para esta app" "3100"
+    set_env APP_PORT "$APP_PORT"
+  fi
   set_env POSTGRES_PASSWORD "$(gen 24)"
   set_env ALARM_CRON_SECRET "$(gen 24)"
   ask AGENT_API_KEY "AGENT_API_KEY del agente de ChatGPT (Enter para generar una nueva)" ""
@@ -109,11 +113,23 @@ say "4/4 Arrancando la app"
 if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
   ufw allow 22/tcp >/dev/null; ufw allow 80/tcp >/dev/null; ufw allow 443/tcp >/dev/null
 fi
-docker compose --profile https up -d --build
-docker compose ps
-
 DOMAIN_NOW="$(grep -E '^DOMAIN=' .env | cut -d= -f2-)"
-say "Listo"
-echo "Abre https://${DOMAIN_NOW} (el certificado HTTPS puede tardar un minuto la primera vez)."
+APP_PORT_NOW="$(grep -E '^APP_PORT=' .env | cut -d= -f2-)"; APP_PORT_NOW="${APP_PORT_NOW:-3000}"
+# Si el servidor ya tiene otra web (nginx, Apache...) en los puertos 80/443, no se usa Caddy:
+# la app queda en 127.0.0.1:APP_PORT y se publica con el servidor web existente.
+if ss -ltnH '( sport = :80 or sport = :443 )' 2>/dev/null | grep -q .; then
+  echo "Los puertos 80/443 ya están en uso (otra web en este servidor): arranco sin Caddy."
+  docker compose up -d --build
+  docker compose ps
+  say "Listo (falta publicarla en tu servidor web)"
+  echo "La app escucha en http://127.0.0.1:${APP_PORT_NOW}."
+  echo "Añade un sitio para ${DOMAIN_NOW} en tu nginx/Apache que haga proxy a esa dirección."
+  echo "Ejemplo para nginx: deploy/nginx-licitaciones.conf"
+else
+  docker compose --profile https up -d --build
+  docker compose ps
+  say "Listo"
+  echo "Abre https://${DOMAIN_NOW} (el certificado HTTPS puede tardar un minuto la primera vez)."
+fi
 echo "El dominio debe apuntar (registro A) a la IP de este servidor: $(curl -fsS -4 https://ifconfig.me 2>/dev/null || echo '?')"
 echo "Ver registros:   docker compose logs -f app cron caddy"
