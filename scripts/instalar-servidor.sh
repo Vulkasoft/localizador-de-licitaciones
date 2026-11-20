@@ -123,8 +123,8 @@ if ss -ltnH '( sport = :80 or sport = :443 )' 2>/dev/null | grep -q .; then
   docker compose ps
   say "Listo (falta publicarla en tu servidor web)"
   echo "La app escucha en http://127.0.0.1:${APP_PORT_NOW}."
-  echo "Añade un sitio para ${DOMAIN_NOW} en tu nginx/Apache que haga proxy a esa dirección."
-  echo "Ejemplo para nginx: deploy/nginx-licitaciones.conf"
+  echo "Añade un sitio para ${DOMAIN_NOW} en tu servidor web que haga proxy a esa dirección."
+  echo "Ejemplos listos: deploy/caddy-licitaciones.caddy (Caddy) y deploy/nginx-licitaciones.conf (nginx)"
 else
   docker compose --profile https up -d --build
   docker compose ps

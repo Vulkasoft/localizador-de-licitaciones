@@ -1,0 +1,19 @@
+# Bloque para añadir al Caddyfile que YA usa el servidor (junto a las otras webs).
+# Cambia el dominio (y el puerto si usaste otro APP_PORT). Caddy saca el HTTPS solo.
+#
+# - Si Caddy está instalado en el sistema (systemctl status caddy):
+#     añade esto a /etc/caddy/Caddyfile y ejecuta:  systemctl reload caddy
+# - Si Caddy corre dentro de Docker: cambia 127.0.0.1 por host.docker.internal
+#   (y añade al contenedor de Caddy:  extra_hosts: ["host.docker.internal:host-gateway"]),
+#   o mete el contenedor "app" en la misma red Docker que Caddy y usa  reverse_proxy app:3000
+
+licitaciones.tudominio.com {
+	encode gzip
+	request_body {
+		max_size 50MB
+	}
+	reverse_proxy 127.0.0.1:3000 {
+		# La actualización de licitaciones envía el progreso en streaming
+		flush_interval -1
+	}
+}
