@@ -20,6 +20,18 @@ el usuario no es técnico, así que explica los pasos con lenguaje sencillo.
   y luego `caddy reload` con los mismos argumentos. Edítalo en el sitio (con `cat >>` o un
   editor), nunca con `sed -i`: el archivo se monta en el contenedor directamente.
 
+### Convivencia con otros proyectos
+
+El servidor aloja varios proyectos y no deben interferir entre sí:
+- Cada proyecto tiene su carpeta en `/opt/<proyecto>` (o en `/home/ubuntu/<proyecto>`),
+  su propio `docker compose`, su propia BD y sus volúmenes. No compartas bases de datos.
+- No publiques puertos al exterior. Los internos van en `127.0.0.1` (este usa el 3000).
+- Límites de memoria y CPU en `docker-compose.yml`: app 2 GB / 2 CPU, db 1 GB / 1 CPU,
+  ajustables con `APP_MEM_LIMIT`, `APP_CPUS`, `DB_MEM_LIMIT` y `DB_CPUS` en `.env`.
+- La única pieza compartida es Caddy (puertos 80/443). Mejora recomendada, sin aplicar:
+  sacar Caddy de vulka-ai-os a un proyecto propio (`/opt/proxy`) del que cuelguen todas
+  las webs, para que reiniciar un proyecto no corte las demás. Pide permiso antes.
+
 ### No tocar
 
 En ese servidor corren otros proyectos del usuario: `vulka-ai-os-*`, `vsremote-*`,
