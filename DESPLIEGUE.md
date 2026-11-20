@@ -11,6 +11,8 @@
 | Tareas programadas de Abacus (agente) | Contenedor `cron` (`scripts/cron/crontab`) |
 | Script `appllm-lib.js` y "error reporter" de Abacus | Eliminados |
 | URLs fijas `localizandotudron.abacusai.app` | Se usa `NEXTAUTH_URL` |
+| Varias rutas de la API respondían sin iniciar sesión | Exigen sesión (o el secreto del cron) |
+| Registro abierto a cualquiera | Cerrado: solo el primer usuario o un admin (`ALLOW_SIGNUP=true` lo abre) |
 
 ### Tareas programadas
 

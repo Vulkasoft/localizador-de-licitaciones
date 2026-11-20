@@ -2,8 +2,11 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getTenderObjectType } from '@/lib/scoring';
+import { requireSession } from '@/lib/api-auth';
 
 export async function GET(request: Request) {
+  const denied = await requireSession();
+  if (denied) return denied;
   try {
     const { searchParams } = new URL(request?.url ?? '');
     const search = searchParams.get('search') ?? '';

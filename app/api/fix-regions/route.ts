@@ -2,12 +2,15 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { detectRegionFromText } from '@/lib/placsp';
+import { requireSession } from '@/lib/api-auth';
 
 /**
  * POST /api/fix-regions — Update regionCcaa for all tenders with null/empty region
  * Uses the enhanced city/municipality mapping to detect regions from contracting body text.
  */
 export async function POST() {
+  const denied = await requireSession();
+  if (denied) return denied;
   try {
     // Get all tenders with null or empty regionCcaa
     const tenders = await prisma.tender.findMany({

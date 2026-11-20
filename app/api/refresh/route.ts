@@ -3,8 +3,11 @@ import { prisma } from '@/lib/db';
 import { scoreTender, classifyTender } from '@/lib/scoring';
 import { fetchRecentPLACSPTenders } from '@/lib/placsp';
 import { scrapePlacspDetail } from '@/lib/placsp-scraper';
+import { requireSessionOrCron } from '@/lib/api-auth';
 
-export async function POST() {
+export async function POST(request: Request) {
+  const denied = await requireSessionOrCron(request);
+  if (denied) return denied;
   // Auto-close ONLY adjudicated/formalized tenders before refresh.
   // Expired-by-deadline tenders are intentionally kept (not removed automatically).
   const now = new Date();

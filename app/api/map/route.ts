@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { CCAA_DATA } from '@/lib/spain-geo';
 import { getTenderObjectType } from '@/lib/scoring';
 import { detectRegionFromText } from '@/lib/placsp';
+import { requireSession } from '@/lib/api-auth';
 
 // Normalize CCAA aliases that may appear in feeds
 const CCAA_ALIASES: Record<string, string> = {
@@ -133,6 +134,8 @@ const pliegosOR = [
 ];
 
 export async function GET() {
+  const denied = await requireSession();
+  if (denied) return denied;
   try {
     // Pending tenders — matches /api/tenders. Expired tenders are kept (not auto-removed);
     // only genuinely adjudicated/formalized ones (status closed) are excluded.

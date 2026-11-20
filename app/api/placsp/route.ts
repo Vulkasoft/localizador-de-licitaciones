@@ -3,12 +3,15 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { fetchPLACSPTenders, PLACSPTender } from '@/lib/placsp';
 import { scoreTender, classifyTender } from '@/lib/scoring';
+import { requireSession } from '@/lib/api-auth';
 
 /**
  * GET /api/placsp - Search PLACSP ATOM feed for drone-related tenders
  * Query params: month (YYYYMM), preview (true = don't save)
  */
 export async function GET(request: Request) {
+  const denied = await requireSession();
+  if (denied) return denied;
   try {
     const { searchParams } = new URL(request?.url ?? '');
     const preview = searchParams.get('preview') === 'true';
