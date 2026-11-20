@@ -31,14 +31,64 @@ buscaba licitaciones en la web (PLACSP, TED, noticias) y las insertaba con
 `score_tender.py`. No hay equivalente directo; la búsqueda diaria en PLACSP
 (`/api/refresh`) cubre la fuente oficial.
 
-## Requisitos del servidor
+## Opción recomendada (la más barata)
+
+| Pieza | Servicio | Coste aproximado |
+|---|---|---|
+| Servidor | VPS de Hetzner con Ubuntu 24.04, 2 vCPU y 4 GB de RAM (CX23, o CAX11 si no hay CX) | unos 6 €/mes |
+| Dominio | Cloudflare Registrar (`.com` a precio de coste); para `.es`, otro registrador con los DNS en Cloudflare | unos 10 €/año |
+| Archivos adjuntos | Cloudflare R2 | gratis hasta 10 GB |
+| Correo de la app | Brevo (SMTP) con tu dominio | gratis hasta 300 correos/día |
+| IA de pliegos | API de Anthropic | pago por uso, solo cuando se analiza un pliego |
+
+### Cuentas que hay que crear
+
+1. **Hetzner**: crea un servidor con Ubuntu 24.04. Apunta su IP pública.
+2. **Cloudflare**:
+   - Compra o añade el dominio.
+   - En DNS, crea un registro **A** `licitaciones` → IP del servidor, con la nube en **gris** ("solo DNS").
+   - En R2, crea un bucket `licitaciones` y un token de API de R2 con permiso de lectura y escritura. Apunta el Account ID, el Access Key ID y el Secret Access Key.
+   - En el bucket, Settings → CORS policy, pega esto con tu dominio:
+     ```json
+     [{"AllowedOrigins":["https://licitaciones.TUDOMINIO.com"],"AllowedMethods":["GET","PUT","HEAD"],"AllowedHeaders":["*"],"ExposeHeaders":["ETag"],"MaxAgeSeconds":3600}]
+     ```
+3. **Brevo**:
+   - Añade y verifica tu dominio en Senders & Domains. Brevo te da registros DNS para pegar en Cloudflare.
+   - En SMTP & API, apunta el login SMTP y genera una clave SMTP.
+4. **Anthropic** (platform.claude.com): crea una clave API.
+
+### Instalación en el servidor
+
+Desde la consola web de Hetzner (o por SSH), como root:
+
+```bash
+apt-get update && apt-get install -y git
+```
+
+```bash
+git clone -b claude/adoring-tesla-btiquq https://github.com/vulkasoft/localizador-de-licitaciones.git
+```
+
+Si el repositorio es privado, `git clone` pide usuario y contraseña. Como contraseña,
+usa un token de GitHub con permiso de lectura (GitHub → Settings → Developer settings
+→ Fine-grained tokens).
+
+```bash
+cd localizador-de-licitaciones && ./scripts/instalar-servidor.sh
+```
+
+El instalador pide el dominio, los datos de Brevo, Anthropic y R2, y la URL de la base
+de datos de Abacus. Genera las contraseñas, copia los datos y arranca todo con HTTPS.
+Después, sigue con el paso 5 (archivos adjuntos) y el paso 6 (ajustes externos).
+
+## Requisitos del servidor (instalación manual)
 
 - Linux con Docker y el plugin Docker Compose (`docker compose version`).
 - 2 GB de RAM como mínimo (4 GB recomendado para compilar la imagen).
 - Un dominio apuntando (registro A) a la IP del servidor.
 - Puertos 80 y 443 abiertos si usas el Caddy incluido.
 
-## Paso a paso
+## Paso a paso (instalación manual)
 
 ### 1. Descargar el código
 
