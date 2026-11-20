@@ -199,7 +199,10 @@ Actualizar a una nueva versión del código:
 git pull && docker compose up -d --build
 ```
 
-Copia de seguridad de la base de datos:
+Copia de seguridad de la base de datos: el servicio `backup` guarda cada día a las 03:00 UTC
+`backups/diaria-AAAAMMDD-HHMM.dump` y borra las de más de 14 días (`BACKUP_HOUR` y
+`BACKUP_KEEP_DAYS` en `.env`). Se restaura con `./scripts/restaurar-bd.sh backups/diaria-....dump`.
+Para hacer una copia a mano:
 
 ```bash
 docker compose exec -T db pg_dump -U licitaciones -Fc licitaciones > backups/backup-$(date +%F).dump

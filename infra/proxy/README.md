@@ -56,6 +56,13 @@ Internet ──► proxy-caddy (80/443)
 
 Para quitar una web: borra su archivo de `sites/` y ejecuta `./recargar.sh`.
 
+## A tener en cuenta
+
+- `docker compose down` en vulka-ai-os no puede borrar la red `vulka-ai-os_edge` mientras
+  `proxy-caddy` esté conectado a ella. Solo avisa; los contenedores se paran igual.
+- El proxy debe existir antes de que vulka-ai-os despliegue un cambio en `caddy/`, porque
+  su `deploy/update.sh` recarga `proxy-caddy`.
+
 ## Comprobaciones útiles
 
 ```bash

@@ -49,6 +49,26 @@ services:
     depends_on:
       - app
 
+  # Copia de seguridad diaria de la BD en ./backups (scripts/backup/copia-diaria.sh).
+  backup:
+    image: postgres:17
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.5
+    environment:
+      PGUSER: ${POSTGRES_USER:-licitaciones}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-licitaciones}
+      BACKUP_HOUR: ${BACKUP_HOUR:-3}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup:/backup-scripts:ro
+    entrypoint: ["/bin/sh", "/backup-scripts/copia-diaria.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+
   # HTTPS automático con Let's Encrypt. Actívalo con:
   #   docker compose --profile https up -d
   # Si ya tienes nginx/Apache en el servidor, no lo uses y apunta tu proxy a 127.0.0.1:3000.

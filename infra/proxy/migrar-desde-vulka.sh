@@ -53,13 +53,31 @@ echo "Actualizador de vulka-ai-os parado durante la migración (estaba activo: $
 restore_timer() { [ "$TIMER_WAS_ACTIVE" = yes ] && systemctl start "$UPDATE_TIMER" || true; }
 
 say "3/7 Poniendo vulka-ai-os en la versión sin Caddy"
-# El único cambio local esperado es el Caddyfile editado a mano (ya respaldado).
+# Cambios locales esperados: el Caddyfile editado a mano (ya respaldado) y copias
+# sueltas Caddyfile.bak* hechas al editarlo. Las copias se apartan a $BACKUP.
+for f in "$VULKA_DIR"/Caddyfile.bak*; do
+  [ -e "$f" ] || continue
+  if [ -z "$(as_vulka git -C "$VULKA_DIR" ls-files -- "$(basename "$f")")" ]; then
+    mv "$f" "$BACKUP/" && echo "Apartado $(basename "$f") a $BACKUP"
+  fi
+done
 as_vulka git -C "$VULKA_DIR" checkout -- Caddyfile 2>/dev/null || true
 if ! as_vulka git -C "$VULKA_DIR" diff --quiet || ! as_vulka git -C "$VULKA_DIR" diff --cached --quiet ||
    [ -n "$(as_vulka git -C "$VULKA_DIR" ls-files --others --exclude-standard)" ]; then
+  for f in "$BACKUP"/Caddyfile.bak*; do if [ -e "$f" ]; then mv "$f" "$VULKA_DIR/"; fi; done
   [ -f "$BACKUP/Caddyfile.host" ] && cp -p "$BACKUP/Caddyfile.host" "$VULKA_DIR/Caddyfile"
   restore_timer
   die "vulka-ai-os tiene otros cambios locales; no sigo (revisa: git -C $VULKA_DIR status)"
+fi
+# origin/main solo debe traer el cambio del proxy (PR #23). Si trae más cosas (por
+# ejemplo, cambios de la app), hay que desplegarlas antes con deploy/update.sh.
+unexpected="$(as_vulka git -C "$VULKA_DIR" diff --name-only HEAD origin/main |
+  grep -vE '^(Caddyfile|caddy/|compose\.yaml$|deploy/update\.sh$|tests/|docs/|README\.md$|\.github/)' || true)"
+if [ -n "$unexpected" ]; then
+  for f in "$BACKUP"/Caddyfile.bak*; do if [ -e "$f" ]; then mv "$f" "$VULKA_DIR/"; fi; done
+  [ -f "$BACKUP/Caddyfile.host" ] && cp -p "$BACKUP/Caddyfile.host" "$VULKA_DIR/Caddyfile"
+  restore_timer
+  die "origin/main trae otros cambios además del proxy; despliégalos primero: $(echo $unexpected)"
 fi
 as_vulka git -C "$VULKA_DIR" merge --ff-only --quiet origin/main
 [ -f "$VULKA_DIR/caddy/site.caddy" ] || die "falta $VULKA_DIR/caddy/site.caddy tras actualizar"
@@ -72,6 +90,7 @@ rollback() {
   ( cd "$PROXY_DIR" && docker compose down ) >/dev/null 2>&1 || true
   as_vulka git -C "$VULKA_DIR" reset --hard --quiet "$(cat "$BACKUP/vulka-commit")" || true
   cp -p "$BACKUP/Caddyfile.host" "$VULKA_DIR/Caddyfile" 2>/dev/null || cp "$BACKUP/Caddyfile.en-uso" "$VULKA_DIR/Caddyfile"
+  for f in "$BACKUP"/Caddyfile.bak*; do if [ -e "$f" ]; then mv "$f" "$VULKA_DIR/"; fi; done
   docker start "$OLD" >/dev/null && echo "Caddy de vulka-ai-os restaurado." >&2
   restore_timer
   echo "Copias en $BACKUP" >&2
