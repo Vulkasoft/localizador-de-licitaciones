@@ -6,6 +6,8 @@ import { prisma } from '@/lib/db';
 import { scoreTender } from '@/lib/scoring';
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   try {
     const tender = await prisma.tender.findUnique({
       where: { id: params?.id },
